@@ -1,0 +1,17 @@
+#################################################################
+#
+# git Aliases
+#
+#################################################################
+
+# most aliases in ~/.gitconfig
+
+function git_diff_branch {
+    local -r main="$(git remote show "$(git remote)" | sed -n '/HEAD branch/s/.*: //p')"
+    local -r current="$(git rev-parse --abbrev-ref HEAD)"
+
+    git diff --name-only "$main"..."$current" | xargs dirname | sort | uniq
+}
+
+alias git_update_submodules_init='git submodule update --init --recursive'
+alias git_update_submodules='git submodule update --recursive --remote'

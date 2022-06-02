@@ -1,0 +1,8 @@
+[submodule "personal"]
+	path = personal
+	url = https://github.com/tdharris/.dotfiles-personal.git
+	branch = main
+[submodule "wrk"]
+	path = wrk
+	url = https://github.com/tdharris/.dotfiles-wrk.git
+	branch = main

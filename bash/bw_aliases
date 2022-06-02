@@ -1,0 +1,10 @@
+# Bitwarden Aliases
+
+function bw_running_and_unlocked {
+    bw status | jq -r '.status' | grep -q "unlocked" || bw unlock
+}
+
+function bw_generate_password {
+    local -r length="${1:-20}"
+    bw generate -u -l -n -s --length "$length"
+}

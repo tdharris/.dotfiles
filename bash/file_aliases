@@ -1,0 +1,142 @@
+#################################################################
+#
+# File Aliases
+# A collection of functions for working with files.
+#
+#################################################################
+
+
+# Returns true (0) if the given file exists and is a file and false (1) otherwise
+function file_exists {
+  local -r file="$1"
+  [[ -f "$file" ]]
+}
+
+# Returns true (0) if the given file exists contains the given text and false (1) otherwise. The given text is a
+# regular expression.
+function file_contains_text {
+  local -r text="$1"
+  local -r file="$2"
+  grep -q "$text" "$file"
+}
+
+# Append the given text to the given file. The reason this method exists, as opposed to using bash's built-in append
+# operator, is that this method uses sudo, which doesn't work natively with the built-in operator.
+function file_append_text {
+  local -r text="$1"
+  local -r file="$2"
+
+  echo -e "$text" | sudo tee -a "$file" > /dev/null
+}
+
+# Replace a line of text that matches the given regular expression in a file with the given replacement. Only works for
+# single-line replacements. Note that this method uses sudo!
+function file_replace_text {
+  local -r original_text_regex="$1"
+  local -r replacement_text="$2"
+  local -r file="$3"
+
+  local args=()
+  args+=("-i")
+
+  if os_is_darwin; then
+    # OS X requires an extra argument for the -i flag (which we set to empty string) which Linux does no:
+    # https://stackoverflow.com/a/2321958/483528
+    args+=("")
+  fi
+
+  args+=("s|$original_text_regex|$replacement_text|")
+  args+=("$file")
+
+  sudo sed "${args[@]}" > /dev/null
+}
+
+# Call file_replace_text for each of the files listed in $files[@]
+function file_replace_text_in_files {
+  local -r original_text_regex="$1"
+  local -r replacement_text="$2"
+  shift 2
+  local -ar files=("$@")
+
+  for file in "${files[@]}"; do
+    file_replace_text "$original_text_regex" "$replacement_text" "$file"
+  done
+}
+
+# If the given file already contains the original text (which is a regex), replace it with the given replacement. If
+# it doesn't contain that text, simply append the replacement text at the end of the file.
+function file_replace_or_append_text {
+  local -r original_text_regex="$1"
+  local -r replacement_text="$2"
+  local -r file="$3"
+
+  if file_exists "$file" && file_contains_text "$original_text_regex" "$file"; then
+    file_replace_text "$original_text_regex" "$replacement_text" "$file"
+  else
+    file_append_text "$replacement_text" "$file"
+  fi
+}
+
+# Replace a specific template string in a file with a value. Provided as an array of TEMPLATE-STRING=VALUE
+function file_fill_template {
+  local -r file="$1"
+  shift 1
+  local -ar auto_fill=("$@")
+
+  if [[ -z "${auto_fill[@]}" ]]; then
+    log_info "No auto-fill params specified."
+    return
+  fi
+
+  local name
+  local value
+  for param in "${auto_fill[@]}"; do
+    name="$(string_strip_suffix "$param" "=*")"
+    value="$(string_strip_prefix "$param" "*=")"
+    file_replace_text "$name" "$value" "$file"
+  done
+}
+
+function file_hcl_get_value {
+    local -r hcl_path="$1"
+    local -r attribute="$2"
+    local -r file="${3:-terragrunt.hcl}"
+
+    local -r value="$(grep "$attribute\s*=" "$hcl_path/$file" | sed 's/.*=//;s/\s//g')"
+    echo "$value"
+}
+
+function file_yaml_decode {
+    local prefix=$2
+    local s='[[:space:]]*' w='[a-zA-Z0-9_-]*' fs=$(echo @|tr @ '\034')
+    sed -ne "s|^\($s\)\($w\)$s:$s\"\(.*\)\"$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p"  $1 |
+    awk -F$fs '{
+        indent = length($1)/2;
+        vname[indent] = $2;
+        for (i in vname) {if (i > indent) {delete vname[i]}}
+        if (length($3) > 0) {
+            vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+            printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
+        }
+    }'
+}
+
+# Searches up the directory tree and returns the absolute path to the first target file in a parent folder.
+function file_find_in_parent_folders {
+  local -r target_file="$1"
+  local -r start_dir="${2:-.}"
+  local -r parent_dir_max="${3:-/}"
+  
+  local current_dir="$(realpath "$start_dir")"
+
+  while [[ "$current_dir" != "$parent_dir_max" ]]; do
+    if test -f "$current_dir/$target_file"; then
+      echo "$(realpath "$current_dir/$target_file")"
+      return 0
+    fi
+    current_dir="$(realpath "$current_dir/..")"
+  done
+
+  return 1
+}
