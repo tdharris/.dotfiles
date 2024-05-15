@@ -23,3 +23,9 @@ function gh_pr_checkout {
 
     gh pr checkout "$pr"
 }
+
+function gh_pr_comment {
+    local -r comment="$1"
+
+    gh pr comment --body "$comment"
+}
