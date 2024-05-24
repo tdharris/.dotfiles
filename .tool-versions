@@ -35,3 +35,5 @@ eksctl 0.165.0
 starship 1.17.1
 java openjdk-14.0.2
 neovim 0.9.5
+gcloud 477.0.0
+glab 1.40.0
