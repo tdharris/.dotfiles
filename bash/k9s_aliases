@@ -20,4 +20,4 @@ function env-k9s-assume-iam-role {
 
 	aws_sts_end_privileged_session
 }
-alias k9s="env-k9s-assume-iam-role"
+alias k9sa="env-k9s-assume-iam-role"
