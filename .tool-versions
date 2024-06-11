@@ -39,3 +39,4 @@ gcloud 477.0.0
 glab 1.40.0
 trivy 0.51.4
 checkov 3.2.125
+infracost 0.10.37
