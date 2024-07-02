@@ -13,12 +13,12 @@ function env-ghe-gruntwork-install {
 	echo "$*" | grep -q "repo.*$ghe_repo" >/dev/null
 	if [[ $? -eq 0 ]]; then
 		echo "Fetching Github Enterprise PAT..."
-		if env-gh-enterprise; then
-			echo "✔ Successfully set Github Enterprise GITHUB_OAUTH_TOKEN."
-		else
-			echo "ERROR: Failed to retrieve Github Enterprise PAT: 'env-gh-enterprise'"
+		if [[ -z "$GH_ENTERPRISE_TOKEN" ]]; then
+			echo "ERROR: GH_ENTERPRISE_TOKEN is not set."
 			return 1
 		fi
+		export GITHUB_OAUTH_TOKEN="$GH_ENTERPRISE_TOKEN"
+		echo "✔ Successfully set Github Enterprise GITHUB_OAUTH_TOKEN."
 	fi
 
 	# Runs gruntwork-install with arguments ignoring any shell function named gruntwork-install.
