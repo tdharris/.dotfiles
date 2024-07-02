@@ -104,8 +104,8 @@ function iac-helm-diff-plan {
 	local -r plan="tf.plan"
 
 	terragrunt plan --terragrunt-source-update -no-color >"$plan" &&
-		cat "$plan" | awk '/helm_release/,/^    }/' | awk '/- <<~EOT/,/EOT,/' >old.yaml &&
-		cat "$plan" | awk '/helm_release/,/^    }/' | awk '/+ <<~EOT/,/EOT,/' >new.yaml &&
+		cat "$plan" | awk '/helm_release/,/^    }/' | awk '/- <<-EOT/,/EOT,/' >old.yaml &&
+		cat "$plan" | awk '/helm_release/,/^    }/' | awk '/+ <<-EOT/,/EOT,/' >new.yaml &&
 		git diff --no-index old.yaml new.yaml
 
 	if [[ ! -s "old.yaml" || ! -s "new.yaml"  ]]; then
