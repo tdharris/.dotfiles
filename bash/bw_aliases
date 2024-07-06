@@ -8,3 +8,15 @@ function bw_generate_password {
     local -r length="${1:-20}"
     bw generate -u -l -n -s --length "$length"
 }
+
+# Bitwarden Secrets Manager
+
+function bws_env {
+    local -r id="$1"
+    local -r value="$(bws secret get "$id" | jq -r '.value')"
+
+    while IFS= read -r key; do
+        local value_key="$(echo "$value" | jq -r ".$key")"
+        export "$key"="$value_key"
+    done < <(echo "$value" | jq -r 'keys[]')
+}
