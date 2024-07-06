@@ -40,3 +40,5 @@ glab 1.40.0
 trivy 0.51.4
 checkov 3.2.125
 infracost 0.10.37
+gh2gl 0.2.4
+bitwarden-secrets-manager 0.5.0
