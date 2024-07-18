@@ -59,14 +59,6 @@ function iac_cleanup {
 	local -r dir="${1:-.}"
 
 	echo "Cleaning up .terragrunt-cache directories from $dir"
-	find "$dir" -type d -name .terragrunt-cache -exec rm -rfv {} \;
-	echo "Done."
-}
-
-function iac_cleanup_silent {
-	local -r dir="${1:-.}"
-
-	echo "Cleaning up .terragrunt-cache directories from $dir"
 	find "$dir" -type d -name .terragrunt-cache 2>/dev/null -exec rm -rf {} \;
 	echo "Done."
 }
