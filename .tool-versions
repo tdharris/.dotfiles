@@ -36,9 +36,9 @@ starship 1.17.1
 java openjdk-14.0.2
 neovim 0.9.5
 gcloud 477.0.0
-glab 1.40.0
+glab 1.43.0
 trivy 0.51.4
 checkov 3.2.125
 infracost 0.10.37
-gh2gl 0.2.4
+gh2gl 1.4.2
 bitwarden-secrets-manager 0.5.0
