@@ -18,7 +18,7 @@ terraform-ls 0.31.2
 terragrunt 0.26.7
 nodejs 18.19.1
 ig-tenant-upgrade 0.3.4
-bitwarden 2024.7.1
+bitwarden 2024.7.2
 pre-commit 3.2.2
 terraform-docs 0.16.0
 yq 4.35.1
@@ -26,7 +26,6 @@ act 0.2.62
 golang 1.20
 shellcheck 0.10.0
 awscli 2.13.16
-earthly 0.7.20
 fzf 0.42.0
 terrascan 1.18.3
 pluto 5.18.4
