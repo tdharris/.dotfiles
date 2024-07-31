@@ -29,8 +29,8 @@ My aliases repo.
 2. Enable aliases in the shell by adding the following to the `~/.bashrc` or `~/profile` file:
 
     ```console
-    if [[ -f "~/.dotfiles/bootstrap.sh" ]]; then
-        source ~/.dotfiles/bootstrap.sh
+    if [[ -f "$HOME/.dotfiles/bootstrap.sh" ]]; then
+        source "$HOME/.dotfiles/bootstrap.sh"
     fi
     ```
 
