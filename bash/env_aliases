@@ -4,8 +4,6 @@
 #
 #################################################################
 
-
-
 #################################################################
 # Helper Functions
 #################################################################
@@ -59,10 +57,10 @@ function getmfa {
 	bw get totp "$1"
 }
 
-function env-aws-clear { 
+function env-aws-clear {
 	local -r sts_vars=($(env | grep '^AWS_ARN_STS_' | awk -F'=' '{print $1}'))
-	for var in $sts_vars; do unset $var; done;
-	unset AWS_SECRET_KEY AWS_MFA_ARN AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID AWS_SESSION_TOKEN BW_ITEM_NAME;
+	for var in $sts_vars; do unset $var; done
+	unset AWS_SECRET_KEY AWS_MFA_ARN AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID AWS_SESSION_TOKEN AWS_SESSION_EXPIRATION BW_ITEM_NAME
 }
 
 function c {
@@ -72,7 +70,6 @@ function c {
 		code-insiders "$@"
 	fi
 }
-
 
 #################################################################
 # BASH-COMMONS Functions
