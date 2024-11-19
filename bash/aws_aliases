@@ -109,7 +109,7 @@ function dlogin {
 		echo "dlogin is missing REGION: '$REGION'"
 		return 1
 	fi
-	
+
 	echo "Logging Docker into AWS ECR: https://$ACCOUNT.dkr.ecr.$REGION.amazonaws.com ..."
 	aws ecr get-login-password --region "$REGION" | docker login -u AWS --password-stdin "https://$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
 }

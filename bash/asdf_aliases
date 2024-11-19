@@ -41,7 +41,7 @@ EOF
             ;;
         esac
     done
-    
+
     if [[ ${#plugins[@]} -eq 0 ]]; then
         echo "Fetching plugins"
         plugins=("$(asdf plugin list)")
@@ -50,7 +50,7 @@ EOF
 
     if "$update_plugin_repos"; then
         echo -e "\nUpdating plugin repositories..."
-        if "$all_plugins"; then 
+        if "$all_plugins"; then
             asdf plugin update --all || fail "Failed to upgrade $plugin plugin repo"
         else
             for plugin in "${plugins[@]}"; do

@@ -9,7 +9,7 @@ function wgrep {
 }
 
 function wfind {
-	find . -not -path "*/.terragrunt-cache/*" "$@" 
+	find . -not -path "*/.terragrunt-cache/*" "$@"
 }
 
 alias tgaf="terragrunt apply"   # "fast"
@@ -59,7 +59,7 @@ function terragrunt_local_module_source {
 	local -r action="${1:-apply}"; shift;
 	local -r INFRA_MODULES="${FOCUSSAAS_INFRA_MODULES}"
 	local -r hcl_file="terragrunt.hcl"
-	
+
 	if [[ -z "$INFRA_MODULES" || ! -d "$INFRA_MODULES" ]]; then
 		echo "ERROR: INFRA_MODULES is not set or is not a directory: $INFRA_MODULES"
 		return 1
@@ -91,7 +91,7 @@ function terragrunt_local_module_source {
 			return 1
 		fi
 	fi
-	
+
 	echo terragrunt "$action" --terragrunt-source-update --terragrunt-source "$source" "${args[@]}"
 	if [[ "${#args[@]}" -ne 0 ]]; then
 		terragrunt "$action" --terragrunt-source-update --terragrunt-source "$source" "${args[@]}"

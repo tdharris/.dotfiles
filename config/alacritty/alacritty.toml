@@ -1,0 +1,69 @@
+# Windows / WSL
+[terminal.shell]
+# program = "C:\\Windows\\System32\\wsl.exe"
+program = "wsl"
+args = [ "--cd", "~" ]
+
+# themes
+# https://github.com/alacritty/alacritty-theme
+# pick with this workaround: https://dev.to/dustydonkey/alacritty-themes-not-working-any-more-22on
+import = [
+    "C:\\Users\\<username>\\AppData\\Roaming\\alacritty\\themes\\themes\\snazzy.toml"
+]
+
+[general]
+live_config_reload = true
+
+[window]
+opacity = 1
+padding.x = 10
+padding.y = 10
+decorations = "Full"
+decorations_theme_variant = "Dark" # "Dark"
+startup_mode = "Maximized"
+dynamic_title = true
+blur = true
+
+[env]
+term = "xterm-256color"
+
+[selection]
+save_to_clipboard = true
+
+[font.glyph_offset]
+x = 0
+y = 0
+
+[font]
+size = 14.0
+
+[font.bold]
+family = "FiraCode Nerd Font"
+style = "Heavy"
+
+[font.bold_italic]
+family = "FiraCode Nerd Font"
+style = "Heavy Italic"
+
+[font.italic]
+family = "FiraCode Nerd Font"
+style = "Medium Italic"
+
+[font.normal]
+family = "FiraCode Nerd Font"
+style = "Medium"
+
+[colors]
+draw_bold_text_with_bright_colors = true
+
+# Paste on right click
+[mouse]
+hide_when_typing = true
+bindings = [
+    { mouse = "Right", action = "Paste" },
+]
+
+[keyboard]
+bindings = [
+    { key = "N", mods = "Control | Alt", action = "SpawnNewInstance" },
+]
