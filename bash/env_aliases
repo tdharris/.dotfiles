@@ -51,6 +51,7 @@ function aws_auth {
 	fi
 
 	eval "$result"
+	USER="$(whoami)"
 }
 
 function getmfa {
@@ -64,10 +65,26 @@ function env-aws-clear {
 }
 
 function c {
+	if [[ -n "$HTTP_PROXY" ]]; then
+		log info "Disabling proxy for code-insiders"
+		local -r proxy_enabled=true
+		local -r proxy_http="$HTTP_PROXY"
+		local -r proxy_https="$HTTPS_PROXY"
+		unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy
+	fi
+
 	if [[ -z "$1" ]]; then
 		code-insiders .
 	else
 		code-insiders "$@"
+	fi
+
+	if [[ -n "$proxy_enabled" ]]; then
+		log info "Re-enabling proxy"
+		export HTTP_PROXY="$proxy_http"
+		export http_proxy="$proxy_http"
+		export HTTPS_PROXY="$proxy_https"
+		export https_proxy="$proxy_https"
 	fi
 }
 
