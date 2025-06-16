@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Bitwarden Aliases
 
 function bw_running_and_unlocked {

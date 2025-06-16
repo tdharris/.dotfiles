@@ -1,9 +1,6 @@
-#################################################################
-#
-# File Aliases
+#!/usr/bin/env bash
+
 # A collection of functions for working with files.
-#
-#################################################################
 
 # Returns true (0) if the given file exists and is a file and false (1) otherwise
 function file_exists {
@@ -25,7 +22,7 @@ function file_append_text {
   local -r text="$1"
   local -r file="$2"
 
-  echo -e "$text" | sudo tee -a "$file" >/dev/null
+  echo -e "$text" | sudo tee -a "$file" > /dev/null
 }
 
 # Replace a line of text that matches the given regular expression in a file with the given replacement. Only works for
@@ -47,7 +44,7 @@ function file_replace_text {
   args+=("s|$original_text_regex|$replacement_text|")
   args+=("$file")
 
-  sudo sed "${args[@]}" >/dev/null
+  sudo sed "${args[@]}" > /dev/null
 }
 
 # Call file_replace_text for each of the files listed in $files[@]
@@ -94,75 +91,4 @@ function file_fill_template {
     value="$(string_strip_prefix "$param" "*=")"
     file_replace_text "$name" "$value" "$file"
   done
-}
-
-function file_hcl_get_value {
-  local -r hcl_path="$1"
-  local -r attribute="$2"
-  local -r file="${3:-terragrunt.hcl}"
-
-  local -r value="$(grep "$attribute\s*=" "$hcl_path/$file" | sed 's/.*=//;s/\s//g')"
-  echo "$value"
-}
-
-function file_yaml_decode {
-  local prefix=$2
-  local s='[[:space:]]*' w='[a-zA-Z0-9_-]*' fs=$(echo @ | tr @ '\034')
-  sed -ne "s|^\($s\)\($w\)$s:$s\"\(.*\)\"$s\$|\1$fs\2$fs\3|p" \
-    -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" $1 |
-    awk -F$fs '{
-        indent = length($1)/2;
-        vname[indent] = $2;
-        for (i in vname) {if (i > indent) {delete vname[i]}}
-        if (length($3) > 0) {
-            vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
-            printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
-        }
-    }'
-}
-
-# Searches up the directory tree and returns the absolute path to the first target file in a parent folder.
-function file_find_in_parent_folders {
-  local -r target_file="$1"
-  local -r start_dir="${2:-.}"
-  local -r parent_dir_max="${3:-/}"
-
-  local current_dir="$(realpath "$start_dir")"
-
-  while [[ "$current_dir" != "$parent_dir_max" ]]; do
-    if test -f "$current_dir/$target_file"; then
-      echo "$(realpath "$current_dir/$target_file")"
-      return 0
-    fi
-    current_dir="$(realpath "$current_dir/..")"
-  done
-
-  return 1
-}
-
-# Returns true (0) if the given directory exists and false (1) otherwise
-function dir_exists {
-  local -r dir="$1"
-  [[ -d "$dir" ]]
-}
-
-# Returns true (0) if the given file or directory exists and false (1) otherwise
-function file_or_dir_exists {
-  local -r file_or_dir="$1"
-  [[ -e "$file_or_dir" ]]
-}
-
-# Returns true (0) if the given files or directories exist and false (1) otherwise
-function files_or_dirs_exist {
-  local -ar files_or_dirs=("$@")
-  local rc=0
-
-  for file_or_dir in "${files_or_dirs[@]}"; do
-    if ! file_or_dir_exists "$file_or_dir"; then
-      echo "File or directory does not exist: $file_or_dir"
-      rc=1
-    fi
-  done
-
-  return $rc
 }
