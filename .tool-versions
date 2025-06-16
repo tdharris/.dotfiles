@@ -4,7 +4,7 @@ direnv 2.32.3
 packer 1.9.4
 azure-cli 2.38.0
 container-diff 0.17.0
-github-cli 2.69.0
+github-cli 2.71.0
 helm 3.12.3
 jq 1.6
 k9s 0.32.5
@@ -12,7 +12,7 @@ kubectl 1.26.15
 kubectx 0.9.5
 kubergrunt 0.14.0
 deno 2.1.4
-iga-renderizer 0.4.5
+iga-renderizer 0.4.7
 terraform 0.13.7
 terraform-ls 0.35.0
 terragrunt 0.26.7
@@ -39,10 +39,9 @@ glab 1.52.0
 trivy 0.51.4
 checkov 3.2.125
 infracost 0.10.39
-gh2gl 2.5.1
+gh2gl 2.6.0
 bitwarden-secrets-manager 0.5.0
 shfmt 3.8.0
-#jenkins-release 0.3.1
 tg-infra-live 0.1.1
 retrieve-artifacts 0.3.0
 tflint 0.53.0
@@ -51,8 +50,10 @@ update-tenant 0.62.10
 configure-tenant 0.61.1
 create-new-tenant 0.61.1
 maintain-tenant 0.61.1
-reset-tenant 0.62.2
+reset-tenant 0.66.3
 go-swagger 0.31.0
-goreleaser 2.7.0
+goreleaser 2.9.0
 gitui 0.27.0
-python system
+#python system
+rust 1.87.0
+jenkins-release 0.4.1
