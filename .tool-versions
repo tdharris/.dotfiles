@@ -16,7 +16,7 @@ iga-renderizer 0.4.7
 terraform 0.13.7
 terraform-ls 0.35.0
 terragrunt 0.26.7
-nodejs 18.19.1
+nodejs 20.19.3
 ig-tenant-upgrade 0.4.2
 bitwarden 2024.7.2
 pre-commit 3.5.0
