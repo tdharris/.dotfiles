@@ -133,3 +133,90 @@ function aws_ecr_latest_versions {
 		--no-cli-pager \
 		--output table
 }
+
+# CloudWatch Logs Insights Query Function
+# Usage: aws_cw_logs_query <log-group-name> <query-string> [start-time] [end-time]
+#
+#   <log-group-name>: The name of the CloudWatch log group.
+#   <query-string>: The CloudWatch Logs Insights query.
+#   [start-time]: (Optional) Unix epoch time in seconds. Defaults to 24 hour ago.
+#   [end-time]:   (Optional) Unix epoch time in seconds. Defaults to now.
+#
+# Example:
+# aws_cw_logs_query my-app-log-group "fields @timestamp, @message | sort @timestamp desc | limit 10"
+function aws_cw_logs_query {
+  local log_group_name="$1"
+  local query_string="$2"
+  local start_time="${3:-$(($(date +%s) - 86400))}"
+  local end_time="${4:-$(date +%s)}"
+  
+  # Check if required arguments are provided
+  if [[ -z "$log_group_name" || -z "$query_string" ]]; then
+    echo "Usage: aws_cw_logs_query <log-group-name> <query-string> [start-time] [end-time]"
+    return 1
+  fi
+
+  echo -e "\nStarting CloudWatch Logs Insights query..."
+  
+  # Step 1: Start the query and get the queryId
+  local query_result
+  query_result=$(aws logs start-query \
+    --log-group-name "$log_group_name" \
+    --start-time "$start_time" \
+    --end-time "$end_time" \
+    --query-string "$query_string")
+  
+  if [[ $? -ne 0 ]]; then
+    echo "Error starting query. Check log group name and AWS credentials."
+    return 1
+  fi
+  
+  local query_id
+  query_id=$(echo "$query_result" | jq -r '.queryId')
+  
+  if [[ -z "$query_id" ]]; then
+    echo "Failed to retrieve queryId."
+    return 1
+  fi
+  
+  echo "Query started with ID: $query_id"
+  
+  local query_status
+  
+  # Step 2: Poll for results until the query is complete
+  while true; do
+	sleep 2
+    echo -n "Checking status..."
+    
+    local results_json
+    results_json=$(aws logs get-query-results --query-id "$query_id" 2>/dev/null) || {
+	  echo "Error retrieving query results."
+	  return 1
+	}
+    
+    query_status=$(echo "$results_json" | jq -r '.status')
+    echo " status: $query_status"
+    if [[ "$query_status" == "Complete" ]]; then
+      # Format results as a simple table using column command
+      echo
+      echo "Results:"
+      echo "========"
+      
+      # Create a combined output with header and data, excluding @ptr column
+      {
+        # Print header
+        echo "$results_json" | jq -r '.results[0] | map(select(.field != "@ptr") | .field) | @tsv'
+        
+        # Print data rows, excluding @ptr column
+        echo "$results_json" | jq -r '.results[] | map(select(.field != "@ptr") | .value) | @tsv'
+      } | column -t -s $'\t'
+      break
+    elif [[ "$query_status" == "Running" || "$query_status" == "Scheduled" ]]; then
+      continue
+    else
+      echo "Query failed with status: $query_status"
+      echo "$results_json"
+      break
+    fi
+  done
+}
