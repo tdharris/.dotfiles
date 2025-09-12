@@ -145,78 +145,74 @@ function aws_ecr_latest_versions {
 # Example:
 # aws_cw_logs_query my-app-log-group "fields @timestamp, @message | sort @timestamp desc | limit 10"
 function aws_cw_logs_query {
-  local log_group_name="$1"
-  local query_string="$2"
-  local start_time="${3:-$(($(date +%s) - 86400))}"
-  local end_time="${4:-$(date +%s)}"
-  
-  # Check if required arguments are provided
-  if [[ -z "$log_group_name" || -z "$query_string" ]]; then
-    echo "Usage: aws_cw_logs_query <log-group-name> <query-string> [start-time] [end-time]"
-    return 1
-  fi
+	local log_group_name="$1"
+	local query_string="$2"
+	local start_time="${3:-$(($(date +%s) - 86400))}"
+	local end_time="${4:-$(date +%s)}"
 
-  echo -e "\nStarting CloudWatch Logs Insights query..."
-  
-  # Step 1: Start the query and get the queryId
-  local query_result
-  query_result=$(aws logs start-query \
-    --log-group-name "$log_group_name" \
-    --start-time "$start_time" \
-    --end-time "$end_time" \
-    --query-string "$query_string")
-  
-  if [[ $? -ne 0 ]]; then
-    echo "Error starting query. Check log group name and AWS credentials."
-    return 1
-  fi
-  
-  local query_id
-  query_id=$(echo "$query_result" | jq -r '.queryId')
-  
-  if [[ -z "$query_id" ]]; then
-    echo "Failed to retrieve queryId."
-    return 1
-  fi
-  
-  echo "Query started with ID: $query_id"
-  
-  local query_status
-  
-  # Step 2: Poll for results until the query is complete
-  while true; do
-	sleep 2
-    echo -n "Checking status..."
-    
-    local results_json
-    results_json=$(aws logs get-query-results --query-id "$query_id" 2>/dev/null) || {
-	  echo "Error retrieving query results."
-	  return 1
+	local polling_interval_seconds=2
+
+	# Check if required arguments are provided
+	if [[ -z "$log_group_name" || -z "$query_string" ]]; then
+		echo "Usage: aws_cw_logs_query <log-group-name> <query-string> [start-time] [end-time]"
+		return 1
+	fi
+
+	echo "Starting CloudWatch Logs Insights query..."
+
+	# Step 1: Start the query and get the queryId
+	local query_result; query_result="$(aws logs start-query \
+		--log-group-name "$log_group_name" \
+		--start-time "$start_time" \
+		--end-time "$end_time" \
+		--query-string "$query_string" \
+		--output json)" || {
+		echo "Error: Error starting query. Check log group name and AWS credentials."
+		return 1
 	}
-    
-    query_status=$(echo "$results_json" | jq -r '.status')
-    echo " status: $query_status"
-    if [[ "$query_status" == "Complete" ]]; then
-      # Format results as a simple table using column command
-      echo
-      echo "Results:"
-      echo "========"
-      
-      # Create a combined output with header and data, excluding @ptr column
-      {
-        # Print header
-        echo "$results_json" | jq -r '.results[0] | map(select(.field != "@ptr") | .field) | @tsv'
-        
-        # Print data rows, excluding @ptr column
-        echo "$results_json" | jq -r '.results[] | map(select(.field != "@ptr") | .value) | @tsv'
-      } | column -t -s $'\t'
-      break
-    elif [[ "$query_status" == "Running" || "$query_status" == "Scheduled" ]]; then
-      continue
-    else
-      echo "Query failed with status: $query_status"
-      echo "$results_json"
-      break
-    fi
-  done
+
+	local query_id; query_id="$(echo "$query_result" | jq -r '.queryId')" || {
+		echo "Error: parsing queryId from start-query response."
+		return 1
+	}
+	echo "Query started with ID: $query_id"
+
+	# Step 2: Poll for results until the query is complete
+	echo "Polling for query results every $polling_interval_seconds seconds..."
+	sleep $polling_interval_seconds
+	while true; do
+		echo -n "Checking status..."
+		local results; results="$(aws logs get-query-results --query-id "$query_id" --output json 2>/dev/null)" || {
+			echo "Error: retrieving query results."
+			return 1
+		}
+		local query_status; query_status="$(echo -e "$results" | jq -r '.status // "Unknown"')" || {
+			echo "Error: parsing status from query results."
+			return 1
+		}
+		echo " status: $query_status"
+		# Get status and handle different cases without storing in variables
+		if [[ "$query_status" == "Running" || "$query_status" == "Scheduled" ]]; then
+			echo " status: Running/Scheduled"
+			sleep $polling_interval_seconds
+			continue
+		elif [[ "$query_status" == "Complete" ]]; then
+			# Format results as a simple table using column command
+			echo
+			echo "Results:"
+			echo "========"
+			# Create a combined output with header and data, excluding @ptr column
+			{
+				# Print header
+				echo "$results" | jq -r '.results[0] | map(select(.field != "@ptr") | .field) | @tsv'
+				# Print data rows, excluding @ptr column
+				echo "$results" | jq -r '.results[] | map(select(.field != "@ptr") | .value) | @tsv'
+			} | column -t -s $'\t'
+			break
+		else
+			echo "Error: query failed with status: $query_status"
+      		echo "$results"
+			break
+		fi
+	done
 }
