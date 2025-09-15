@@ -201,13 +201,22 @@ function aws_cw_logs_query {
 			echo
 			echo "Results:"
 			echo "========"
-			# Create a combined output with header and data, excluding @ptr column
-			{
-				# Print header
-				echo "$results" | jq -r '.results[0] | map(select(.field != "@ptr") | .field) | @tsv'
-				# Print data rows, excluding @ptr column
-				echo "$results" | jq -r '.results[] | map(select(.field != "@ptr") | .value) | @tsv'
-			} | column -t -s $'\t'
+			
+			# Check if we have any results
+			local result_count
+			result_count=$(echo "$results" | jq -r '.results | length')
+			
+			if [[ "$result_count" -eq 0 ]]; then
+				echo "No results found."
+			else
+				# Create a combined output with header and data, excluding @ptr column
+				{
+					# Print header
+					echo "$results" | jq -r '.results[0] | map(select(.field != "@ptr") | .field) | @tsv'
+					# Print data rows, excluding @ptr column
+					echo "$results" | jq -r '.results[] | map(select(.field != "@ptr") | .value) | @tsv'
+				} | column -t -s $'\t'
+			fi
 			break
 		else
 			echo "Error: query failed with status: $query_status"
