@@ -110,3 +110,20 @@ alias kcfggc='kubectl config get-contexts'
 alias kcfgsc='kubectl config set-context'
 alias kcfguc='kubectl config use-context'
 alias kcfgv='kubectl config view'
+
+function kubectl_discover_workloads {
+  local cluster
+  cluster=$(kubectl config current-context | sed 's|.*cluster/||')
+  {
+    echo "CLUSTER NAMESPACE TYPE IMAGE CONTAINER"
+    kubectl get deploy,daemonset,job,cronjob --all-namespaces -o json | \
+      jq -r --arg cluster "$cluster" '.items[] |
+        .kind as $type |
+        select(.spec.template.spec.containers) |
+        .metadata.namespace as $ns |
+        .spec.template.spec.containers[] |
+        . as $c |
+        ($c.image | sub("^[^/]+/";"") | split(":")[0]) as $img |
+        "\($cluster) \($ns) \($type) \($img) \($c.name)"'
+  } | sort -u | column -t
+}
