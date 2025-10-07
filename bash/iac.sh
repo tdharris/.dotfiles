@@ -36,7 +36,7 @@ function iac-replace-all {
 
 	echo "Replacing all versions with $target_version: $*"
 
-	for v in $(wgrep "\s*source\s*=\s*" | cut -d\? -f2- | sort | uniq | cut -d = -f2- | sed 's|"||'); do
+	for v in $(wgrep "^\s*source\s*=\s*" | cut -d\? -f2- | sort | uniq | cut -d = -f2- | sed 's|"||'); do
 		iac-replace "$v" "$target_version"
 	done
 }
