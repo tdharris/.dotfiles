@@ -26,26 +26,10 @@ function notify {
         return 1
     fi
 
-    if [[ -n "$HTTP_PROXY" ]]; then
-        log info "Disabling proxy to send notification"
-        local -r proxy_enabled=true
-        local -r proxy_http="$HTTP_PROXY"
-        local -r proxy_https="$HTTPS_PROXY"
-        unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy
-    fi
-
     if [[ "$NOTIFY_METHOD" == "slack" ]]; then
         notify_slack "$msg"
     elif [[ "$NOTIFY_METHOD" == "discord" ]]; then
         notify_discord "$msg"
-    fi
-
-    if [[ -n "$proxy_enabled" ]]; then
-        log info "Re-enabling proxy"
-        export HTTP_PROXY="$proxy_http"
-        export http_proxy="$proxy_http"
-        export HTTPS_PROXY="$proxy_https"
-        export https_proxy="$proxy_https"
     fi
 }
 
