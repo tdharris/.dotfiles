@@ -111,19 +111,43 @@ alias kcfgsc='kubectl config set-context'
 alias kcfguc='kubectl config use-context'
 alias kcfgv='kubectl config view'
 
+# Discover k8s workloads
+# - CLUSTER: The cluster name.
+# - NAMESPACE: The namespace where the workload lives.
+# - TYPE: The workload type (Deployment, DaemonSet, Job, CronJob).
+# - WORKLOAD: The actual name of the workload (e.g., nginx-deployment, fluentd-daemonset).
+# - IMAGE: The container image (simplified).
+# - CONTAINER: The container name within the workload.
 function kubectl_discover_workloads {
   local cluster
   cluster=$(kubectl config current-context | sed 's|.*cluster/||')
   {
-    echo "CLUSTER NAMESPACE TYPE IMAGE CONTAINER"
+    echo "CLUSTER NAMESPACE TYPE WORKLOAD STATUS IMAGE CONTAINER"
     kubectl get deploy,daemonset,job,cronjob --all-namespaces -o json | \
       jq -r --arg cluster "$cluster" '.items[] |
         .kind as $type |
+        .metadata.name as $workload |
         select(.spec.template.spec.containers) |
         .metadata.namespace as $ns |
+        # Get status based on workload type
+        (if $type == "Deployment" then
+          (.status.readyReplicas // 0 | tostring) + "/" + (.status.replicas // 0 | tostring)
+        elif $type == "DaemonSet" then
+          (.status.numberReady // 0 | tostring) + "/" + (.status.desiredNumberScheduled // 0 | tostring)
+        elif $type == "Job" then
+          if .status.succeeded > 0 then "Completed"
+          elif .status.failed > 0 then "Failed"
+          else "Running"
+          end
+        elif $type == "CronJob" then
+          if .status.lastScheduleTime then "Scheduled"
+          else "Pending"
+          end
+        else "Unknown"
+        end) as $status |
         .spec.template.spec.containers[] |
         . as $c |
         ($c.image | sub("^[^/]+/";"") | split(":")[0]) as $img |
-        "\($cluster) \($ns) \($type) \($img) \($c.name)"'
+        "\($cluster) \($ns) \($type) \($workload) \($status) \($img) \($c.name)"'
   } | sort -u | column -t
 }
