@@ -16,9 +16,9 @@ iga-renderizer 0.4.7
 terraform 0.13.7
 terraform-ls 0.35.0
 terragrunt 0.26.7
-nodejs 20.19.3
-ig-tenant-upgrade 0.4.2
-bitwarden 2024.7.2
+nodejs 22.9.0
+ig-tenant-upgrade 0.5.0-SNAPSHOT
+bitwarden 2025.10.0
 pre-commit 3.5.0
 terraform-docs 0.16.0
 yq 4.35.1
@@ -35,14 +35,14 @@ starship 1.21.1
 java openjdk-14.0.2
 neovim 0.9.5
 gcloud 477.0.0
-glab 1.52.0
+glab 1.73.0
 trivy 0.51.4
 checkov 3.2.125
 infracost 0.10.39
 gh2gl 2.6.0
 bitwarden-secrets-manager 0.5.0
 shfmt 3.8.0
-tg-infra-live 0.1.1
+tg-infra-live 0.1.2
 retrieve-artifacts 0.3.0
 tflint 0.53.0
 jfrog-cli 2.71.0
@@ -57,4 +57,6 @@ gitui 0.27.0
 #python system
 rust 1.87.0
 jenkins-release 0.4.1
-gum 0.16.1
+gum 0.17.0
+task 3.45.4
+yarn 1.22.22
