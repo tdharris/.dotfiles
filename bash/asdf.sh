@@ -96,3 +96,28 @@ function asdf_add_plugins {
         asdf plugin add "$plugin"
     done
 }
+
+function asdf_update_tool {
+    local plugin="$1"
+    local version="${2:-latest}"
+
+    local -r log_ctx="asdf_update_tool"
+    if [[ -z "$plugin" ]]; then
+        log error "$log_ctx: plugin name is required"
+        return 1
+    fi
+
+    log info "$log_ctx: updating $plugin to $version"
+    local install_out
+    if ! install_out="$(asdf install "$plugin" "$version" 2>&1)"; then
+        log error "$log_ctx: failed to install $plugin $version: $install_out"
+        return 1
+    fi
+    
+    log info "$log_ctx: setting global $plugin to $version"
+    if ! asdf set -u "$plugin" "$version"; then
+        log error "$log_ctx: failed to set global $plugin to $version"
+        return 1
+    fi
+    log info "$log_ctx: $plugin updated to $version and set globally"
+}
