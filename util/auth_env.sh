@@ -2,6 +2,5 @@
 
 # bitwarden session
 if command -v bwl &>/dev/null; then
-	echo "Loading bitwarden session..."
-	eval "$(bwl)" && echo "✔ Success"
+	eval "$(bwl)" && echo -e "🔓 \e[32mBitwarden Unlocked\e[0m"
 fi
