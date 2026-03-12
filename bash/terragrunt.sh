@@ -14,6 +14,7 @@ function wfind {
 	find . -not -path "*/.terragrunt-cache/*" "$@"
 }
 
+alias tg="terragrunt"
 alias tgaf="terragrunt apply"   # "fast"
 alias tgpf="terragrunt plan"    # "fast"
 alias tga="terragrunt apply --terragrunt-source-update"
