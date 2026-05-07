@@ -123,3 +123,12 @@ function iac-helm-diff-plan {
 		fi
 	fi
 }
+
+function tg-lock-providers {
+	terragrunt providers lock \
+		-platform=linux_amd64 \
+		-platform=darwin_amd64 \
+		-platform=darwin_arm64 \
+		-platform=windows_amd64 \
+		"$@"
+}
