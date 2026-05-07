@@ -32,3 +32,41 @@ function git_dir_last_commit_date  {
     printf "%-10s %-10s\n" "$days_ago" "$dir"
     done | sort -rn
 }
+
+function gitsync {
+    local current_dir=$(pwd)
+    local target_dir=${1:-"."}
+
+    cd "$target_dir" || return 1
+
+    for dir in */; do
+        # Use -d and check for .git to ensure it's a repo
+        if [[ -d "$dir/.git" ]]; then
+            (
+                cd "$dir" || exit
+                
+                local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+                if [[ -z "$default_branch" ]]; then
+                    if git show-ref --verify --quiet refs/heads/main; then
+                        default_branch="main"
+                    else
+                        default_branch="master"
+                    fi
+                fi
+
+                local current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+                # Using [[ ]] is the modern standard for Zsh and Bash
+                if [[ "$current_branch" == "$default_branch" ]]; then
+                    echo -e "\033[0;32mUpdating [${dir%/}]...\033[0m"
+                    git pull
+                else
+                    echo -e "\033[0;33mWARNING: [${dir%/}] is on '$current_branch', not '$default_branch'. Skipping.\033[0m"
+                fi
+            )
+        fi
+    done
+
+    cd "$current_dir" || return
+}
+
