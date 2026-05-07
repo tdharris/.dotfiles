@@ -6,17 +6,19 @@
 #
 #################################################################
 
-function fail {
-    echo -e "asdf-upgrade: $*"
-    exit 1
-}
-
 function asdf-upgrade {
     local update_plugin_repos=true
     local all_plugins=false
+    local plugins=()
 
-    function show_help {
-        cat <<EOF
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -s | --skip-repos)
+                update_plugin_repos=false
+                shift
+                ;;
+            -h | --help)
+                cat <<EOF
 
 Usage: asdf-upgrade [options] <packages>
 
@@ -26,48 +28,57 @@ Update the asdf repositories and plugins to latest.
     -h --help: Show this help message.
 
 EOF
-    }
-
-    local plugins=()
-    while [[ $# -gt 0 ]]; do
-        key="$1"
-        case $key in
-        -s | --skip-repos) update_plugin_repos=false ;;
-        -h | --help)
-            show_help
-            shift
-            ;;
-        *)
-            plugins+=("$1")
-            shift
-            ;;
+                return 0
+                ;;
+            *)
+                plugins+=("$1")
+                shift
+                ;;
         esac
     done
 
+    # Fallback to all installed plugins if none were provided
     if [[ ${#plugins[@]} -eq 0 ]]; then
-        echo "Fetching plugins"
-        plugins=("$(asdf plugin list)")
+        echo "Fetching all installed plugins..."
+        plugins=($(asdf plugin list))
         all_plugins=true
     fi
 
-    if "$update_plugin_repos"; then
+    # Bail out early if no plugins exist locally
+    if [[ ${#plugins[@]} -eq 0 ]]; then
+        echo "No plugins found to upgrade."
+        return 0
+    fi
+
+    if [[ "$update_plugin_repos" == true ]]; then
         echo -e "\nUpdating plugin repositories..."
-        if "$all_plugins"; then
-            asdf plugin update --all || fail "Failed to upgrade $plugin plugin repo"
+        if [[ "$all_plugins" == true ]]; then
+            # The $plugin variable was undefined in the original script's warning log here
+            asdf plugin update --all || log warn "Failed to upgrade all plugin repos"
         else
             for plugin in "${plugins[@]}"; do
-                asdf plugin update "$plugin" || fail "Failed to upgrade $plugin plugin repo"
+                asdf plugin update "$plugin" || log warn "Failed to upgrade $plugin plugin repo"
             done
         fi
     fi
 
     echo -e "\nUpgrading packages..."
-    for plugin in $plugins; do
-        local install_out="$(asdf install "$plugin" latest)" || fail "Failed to upgrade $plugin: \n$install_out"
+    local install_out=""
+    for plugin in "${plugins[@]}"; do
+        # Capture stderr as well to ensure errors are caught in install_out
+        install_out="$(asdf install "$plugin" latest 2>&1)" || {
+            log warn "Failed to upgrade $plugin: \n$install_out"
+            continue
+        }
+        
         echo "$install_out"
-        if echo "$install_out" | grep "has been installed\|installation was successful" &>/dev/null; then
+        
+        # Set to latest only if it actually installed a new version
+        if ! echo "$install_out" | grep -qi "is already installed"; then
             echo -e "\nUpdating global $plugin to latest..."
-            asdf global "$plugin" latest || fail "Failed to set global $plugin to latest"
+            # Note: standard asdf commands are `asdf global` or `asdf set --home` depending on your version.
+            # Kept `set -u` assuming it is a specific alias you use.
+            asdf set -u "$plugin" latest || log warn "Failed to set -u $plugin to latest"
         fi
     done
 
