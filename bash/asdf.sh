@@ -6,7 +6,7 @@
 #
 #################################################################
 
-function asdf-upgrade {
+function asdf_upgrade {
     local update_plugin_repos=true
     local all_plugins=false
     local plugins=()
@@ -20,7 +20,7 @@ function asdf-upgrade {
             -h | --help)
                 cat <<EOF
 
-Usage: asdf-upgrade [options] <packages>
+Usage: asdf_upgrade [options] <packages>
 
 Update the asdf repositories and plugins to latest.
 
@@ -65,6 +65,23 @@ EOF
     echo -e "\nUpgrading packages..."
     local install_out=""
     for plugin in "${plugins[@]}"; do
+        # Skip plugins that are added but have no installed versions yet.
+        local current_versions=""
+        if ! current_versions="$(asdf list "$plugin" 2>&1)"; then
+            log warn "Skipping $plugin: unable to determine installed versions (plugin may be missing or have no versions installed)"
+            continue
+        fi
+
+        if echo "$current_versions" | grep -qi "No versions installed"; then
+            log warn "Skipping $plugin: plugin exists but has no installed versions"
+            continue
+        fi
+
+        if [[ -z "$(echo "$current_versions" | sed 's/^[ *]*//;s/[ *]*$//' | sed '/^$/d')" ]]; then
+            log warn "Skipping $plugin: no installed versions found"
+            continue
+        fi
+
         # Capture stderr as well to ensure errors are caught in install_out
         install_out="$(asdf install "$plugin" latest 2>&1)" || {
             log warn "Failed to upgrade $plugin: \n$install_out"
@@ -131,4 +148,43 @@ function asdf_update_tool {
         return 1
     fi
     log info "$log_ctx: $plugin updated to $version and set globally"
+}
+
+function asdf_purge {
+  local plugin=$1
+
+  # Ensure a plugin name was provided
+  if [ -z "$plugin" ]; then
+    echo "Usage: asdf_purge <plugin-name>"
+    return 1
+  fi
+
+  # Verify the plugin is actually installed
+  if ! asdf plugin list | grep -q "^${plugin}$"; then
+    echo "Error: Plugin '$plugin' is not installed."
+    return 1
+  fi
+
+  echo "Finding installed versions for '$plugin'..."
+  
+  # Get versions, stripping the ' * ' indicator for the active version
+  local versions
+  versions=$(asdf list "$plugin" 2>/dev/null | sed 's/^[ *]*//;s/[ *]*$//')
+
+  # Uninstall each version if any exist
+  if [[ "$versions" != *"No versions installed"* ]] && [ -n "$versions" ]; then
+    while IFS= read -r version; do
+      if [ -n "$version" ]; then
+        echo "Uninstalling $plugin $version..."
+        asdf uninstall "$plugin" "$version"
+      fi
+    done <<< "$versions"
+  else
+    echo "No installed versions found to remove."
+  fi
+
+  echo "Removing plugin wrapper for '$plugin'..."
+  asdf plugin remove "$plugin"
+  
+  echo "✅ Done! '$plugin' has been completely purged."
 }

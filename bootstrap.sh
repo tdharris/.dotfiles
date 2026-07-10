@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
-
 DOTFILES_DIR="$HOME/.dotfiles"
 APPLY_LINKS=0
 DRY_RUN=0
