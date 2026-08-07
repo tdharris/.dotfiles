@@ -68,6 +68,6 @@ jenkins-release 0.4.2
 kc-runner 0.1.0
 tg-infra-live 0.1.2
 retrieve-artifacts 0.3.0
-ig-tenant-upgrade 0.5.0-SNAPSHOT
+ig-tenant-upgrade 0.7.0
 java openjdk-14.0.2
 opentofu 1.12.3
