@@ -120,3 +120,19 @@ function os_change_dir_owner {
   log_info "Changing ownership of $dir to $username"
   $exchown -R "$username:$username" "$dir"
 }
+
+# Copy to clipboard
+function copy {
+  if command -v clip.exe &>/dev/null; then
+    clip.exe                                    # WSL
+  elif command -v wl-copy &>/dev/null; then
+    wl-copy                                     # Linux (Wayland)
+  elif command -v xclip &>/dev/null; then
+    xclip -selection clipboard                  # Linux (X11)
+  elif command -v pbcopy &>/dev/null; then
+    pbcopy                                      # macOS
+  else
+    echo "Error: No supported clipboard tool found." >&2
+    return 1
+  fi
+}
