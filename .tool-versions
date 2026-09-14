@@ -53,13 +53,13 @@ tmux 3.7b
 uv 0.11.28
 bifrost 1.1.1
 kubesnap 1.2.0
-inkspect 1.0.0
+inkspect 1.0.1
 gh2gl 2.6.0
 iga-renderizer 0.4.9
 gruntwork-install 0.3.1
 update-tenant 0.77.5
 configure-tenant 0.61.1
-create-new-tenant 0.77.5
+create-new-tenant 0.84.8
 maintain-tenant 0.61.1
 reset-tenant 0.66.3
 manage-content-bucket 0.80.7
