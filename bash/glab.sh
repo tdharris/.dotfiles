@@ -149,3 +149,137 @@ function glab_pipeline_logs {
         cat "$log_file"
     fi
 }
+
+# Checkout a merge request using an interactive selection menu
+function glab_mr_checkout {
+    local -r search="$1"
+    local -r label="$2"
+    local -a repo_args=("${@:3}")
+
+    local -r pr_selection="$(glab mr list "${repo_args[@]}" --search "$search" --label "$label" | grep -v '^$\|Showing.*(Page.*)' | fzf --prompt " Please select the MR > ")"
+    local -r pr="$(echo "$pr_selection" | awk '{print $1}')"
+
+    if [[ -z "$pr" ]]; then
+        log warn "No MR selected, exiting."
+        return 1
+    fi
+
+    glab mr checkout "$pr" "${repo_args[@]}"
+}
+
+# Replace text in the merge request title and description using sed syntax with | as the delimiter
+function glab_mr_replace {
+    local original="" new="" auto_approve=false mr="" repo="" mr_search="" mr_label="" option
+    local new_set=false search_set=false label_set=false
+    local -a mr_args=() repo_args=()
+
+    while [[ "$#" -gt 0 ]]; do
+        option="$1"
+        case "$option" in
+            --from|--to|--mr|--repo|--search|--label)
+                if [[ "$#" -lt 2 || "$2" == --* ]]; then
+                    log error "Missing value for $option."
+                    return 1
+                fi
+                case "$option" in
+                    --from) original="$2" ;;
+                    --to) new="$2"; new_set=true ;;
+                    --mr) mr="$2" ;;
+                    --repo) repo="$2" ;;
+                    --search) mr_search="$2"; search_set=true ;;
+                    --label) mr_label="$2"; label_set=true ;;
+                esac
+                if [[ -z "$2" && "$option" != --to && "$option" != --search && "$option" != --label ]]; then
+                    log error "$option cannot be empty."
+                    return 1
+                fi
+                shift 2
+                ;;
+            --auto-approve) auto_approve=true; shift ;;
+            --help|-h)
+                printf '%s\n' 'Usage: glab_mr_replace [--mr ID/branch] [--repo REPO] [--search TEXT] [--label LABEL] [--from PATTERN] [--to TEXT] [--auto-approve]'
+                return 0
+                ;;
+            *) log error "Unknown argument: $option. Use --help for usage."; return 1 ;;
+        esac
+    done
+    [[ -z "$mr" ]] || mr_args+=("$mr")
+    if [[ -n "$repo" ]]; then
+        repo_args=(--repo "$repo")
+        mr_args+=("${repo_args[@]}")
+    fi
+
+    assert_is_installed glab
+    assert_is_installed jq
+    assert_is_installed sed
+    assert_is_installed gum
+
+    # MR selection
+    if [[ -z "$mr" ]]; then
+        assert_is_installed fzf
+        log info "No MR target specified, prompting for MR selection."
+        if [[ "$search_set" == false ]]; then
+            mr_search="$(gum input --header "Filter merge requests (optional)" --placeholder "Search MR titles and descriptions")" || return 1
+        fi
+        if [[ "$label_set" == false ]]; then
+            mr_label="$(gum input --header "Filter by label (optional)" --placeholder "Label")" || return 1
+        fi
+        glab_mr_checkout "$mr_search" "$mr_label" "${repo_args[@]}" || return 1
+    fi
+
+    local mr_json title description updated_title updated_description
+    if ! mr_json="$(glab mr view "${mr_args[@]}" --output json)"; then
+        log error "Failed to fetch the merge request."
+        return 1
+    fi
+    if ! title="$(printf '%s\n' "$mr_json" | jq -r '(.title // "") | if type == "string" then . else error("Invalid MR title") end')"; then
+        log error "Failed to read the merge request title."
+        return 1
+    fi
+    if ! description="$(printf '%s\n' "$mr_json" | jq -r '(.description // "") | if type == "string" then . else error("Invalid MR description") end')"; then
+        log error "Failed to read the merge request description."
+        return 1
+    fi
+    printf '\nMR Title:\n%s\n\nCurrent Description:\n%s\n\n' "$title" "$description"
+
+    # Prompt for the text to replace if not provided as an argument
+    if [[ -z "$original" ]]; then
+        original="$(gum input --header "Text to replace (sed pattern)" --placeholder "Search text")" || return 1
+        if [[ -z "$original" ]]; then
+            log error "Text to replace cannot be empty."
+            return 1
+        fi
+    fi
+    if [[ "$new_set" == false ]]; then
+        new="$(gum input --header "Replacement text (leave empty to delete)" --placeholder "Replacement text")" || return 1
+    fi
+
+    if ! updated_title="$(printf '%s\n' "$title" | sed -e "s|${original}|${new}|g")"; then
+        log error "Failed to replace text in the merge request title."
+        return 1
+    fi
+    if ! updated_description="$(printf '%s\n' "$description" | sed -e "s|${original}|${new}|g")"; then
+        log error "Failed to replace text in the merge request description."
+        return 1
+    fi
+    if [[ -z "${updated_title//[[:space:]]/}" ]]; then
+        log error "The merge request title cannot be empty."
+        return 1
+    fi
+    if [[ "$title" == "$updated_title" && "$description" == "$updated_description" ]]; then
+        log warn "No changes to the merge request title or description."
+        return 1
+    fi
+
+    printf 'Replacing %s with %s in the merge request title and description:\n\nBefore:\nTitle: %s\nDescription:\n%s\n\n--\nAfter:\nTitle: %s\nDescription:\n%s\n\n' \
+        "$original" "$new" "$title" "$description" "$updated_title" "$updated_description"
+    if [[ "$auto_approve" == "false" ]] && ! gum confirm "Update the merge request title and description?"; then
+        return 1
+    fi
+
+    if ! glab mr update "${mr_args[@]}" --title "$updated_title" --description "$updated_description" --yes; then
+        log error "Failed to update the merge request title and description."
+        return 1
+    fi
+    log info "Updated the merge request title and description."
+}
