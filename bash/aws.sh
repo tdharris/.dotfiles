@@ -287,7 +287,7 @@ function aws_logs {
 		printf '%s\n' "$response" | jq -j '
 			.events[].message | fromjson? | .log? | select(type == "string") |
 			if endswith("\n") then . else . + "\n" end
-		' > "$output_file"
+		' | sed 's/\x1b\[[0-9;]*m//g' > "$output_file"
 	) || {
 		printf 'Error: could not save logs into %s (existing files are not overwritten).\n' "$output_file" >&2
 		return 1
