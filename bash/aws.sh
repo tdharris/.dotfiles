@@ -225,3 +225,73 @@ function aws_cw_logs_query {
 		fi
 	done
 }
+
+# Function to retrieve fluentbit-streamed workload logs from AWS CloudWatch into a simple application-focused format
+# Usage: aws_logs [log-group-name] [log-stream-name] [region] [output-file]
+function aws_logs {
+	local log_group_name="${1:-}"
+	local log_stream_name="${2:-}"
+	local region="${3:-}"
+	local output_file="${4:-}"
+
+	if (( $# > 4 )); then
+		printf 'Usage: aws_logs [log-group-name] [log-stream-name] [region] [output-file]\n' >&2
+		return 1
+	fi
+
+	assert_is_installed jq
+	assert_is_installed aws
+	assert_is_installed gum
+
+	if [[ -z "$log_group_name" || -z "$log_stream_name" || -z "$region" || -z "$output_file" ]]; then
+		command -v gum >/dev/null 2>&1 || {
+			printf 'Error: gum is required to prompt for missing arguments.\n' >&2
+			return 1
+		}
+	fi
+
+	if [[ -z "$log_group_name" ]]; then
+		log_group_name="$(gum input --header 'CloudWatch log group:')" || return $?
+	fi
+	if [[ -z "$log_stream_name" ]]; then
+		log_stream_name="$(gum input --header 'CloudWatch log stream:')" || return $?
+	fi
+	if [[ -z "$region" ]]; then
+		region="$(gum input --header 'AWS region:' --value "${AWS_REGION:-${AWS_DEFAULT_REGION:-us-west-2}}")" || return $?
+	fi
+	if [[ -z "$log_group_name" || -z "$log_stream_name" || -z "$region" ]]; then
+		printf 'Error: log group, log stream, and region must not be empty.\n' >&2
+		return 1
+	fi
+
+	if [[ -z "$output_file" ]]; then
+		local filename="${log_stream_name##*/}"
+		filename="${filename%.log}"
+		filename="${filename//[^a-zA-Z0-9._-]/_}"
+		local suggested_file="/tmp/${filename:0:120}-retrieved-$(date +%Y%m%d-%H%M%S).log"
+		output_file="$(gum input --header 'Output file:' --value "$suggested_file")" || return $?
+		output_file="${output_file:-$suggested_file}"
+	fi
+
+	local response
+	response="$(aws logs filter-log-events \
+		--region "$region" \
+		--log-group-name "$log_group_name" \
+		--log-stream-names "$log_stream_name" \
+		--no-cli-pager \
+		--output json)" || return $?
+
+	(
+		umask 077
+		set -o noclobber
+		printf '%s\n' "$response" | jq -j '
+			.events[].message | fromjson? | .log? | select(type == "string") |
+			if endswith("\n") then . else . + "\n" end
+		' > "$output_file"
+	) || {
+		printf 'Error: could not save logs into %s (existing files are not overwritten).\n' "$output_file" >&2
+		return 1
+	}
+
+	printf 'Logs saved to %s\n' "$output_file"
+}
