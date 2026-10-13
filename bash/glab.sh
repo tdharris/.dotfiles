@@ -170,8 +170,8 @@ function glab_mr_checkout {
 # Replace text in the merge request title and description using sed syntax with | as the delimiter
 function glab_mr_replace {
     local original="" new="" auto_approve=false mr="" repo="" mr_search="" mr_label="" option
-    local new_set=false search_set=false label_set=false
-    local -a mr_args=() repo_args=()
+    local new_set=false search_set=false label_set=false interactive=false confirm_exit
+    local -a mr_args=() repo_args=() sed_args=()
 
     while [[ "$#" -gt 0 ]]; do
         option="$1"
@@ -182,8 +182,25 @@ function glab_mr_replace {
                     return 1
                 fi
                 case "$option" in
-                    --from) original="$2" ;;
-                    --to) new="$2"; new_set=true ;;
+                    --from)
+                        if [[ -n "$original" ]]; then
+                            if [[ "$new_set" == false ]]; then
+                                log error "Each --from must have a --to before the next --from."
+                                return 1
+                            fi
+                            sed_args+=(-e "s|${original}|${new}|g")
+                            new=""
+                            new_set=false
+                        fi
+                        original="$2"
+                        ;;
+                    --to)
+                        if [[ "$new_set" == true ]]; then
+                            log error "Each replacement can have only one --to."
+                            return 1
+                        fi
+                        new="$2"; new_set=true
+                        ;;
                     --mr) mr="$2" ;;
                     --repo) repo="$2" ;;
                     --search) mr_search="$2"; search_set=true ;;
@@ -197,12 +214,22 @@ function glab_mr_replace {
                 ;;
             --auto-approve) auto_approve=true; shift ;;
             --help|-h)
-                printf '%s\n' 'Usage: glab_mr_replace [--mr ID/branch] [--repo REPO] [--search TEXT] [--label LABEL] [--from PATTERN] [--to TEXT] [--auto-approve]'
+                printf '%s\n' 'Usage: glab_mr_replace [--mr ID/branch] [--repo REPO] [--search TEXT] [--label LABEL] [--from PATTERN --to TEXT]... [--auto-approve]' \
+                    'Repeat --from/--to pairs to apply replacements in order (later patterns can match earlier replacements).' \
+                    'With no pair or an incomplete single pair, prompt for missing values and offer additional replacements.'
                 return 0
                 ;;
             *) log error "Unknown argument: $option. Use --help for usage."; return 1 ;;
         esac
     done
+    if [[ -n "$original" && "$new_set" == true ]]; then
+        sed_args+=(-e "s|${original}|${new}|g")
+    elif [[ "${#sed_args[@]}" -gt 0 ]]; then
+        log error "Each --from must have a corresponding --to when supplying multiple replacements."
+        return 1
+    else
+        interactive=true
+    fi
     [[ -z "$mr" ]] || mr_args+=("$mr")
     if [[ -n "$repo" ]]; then
         repo_args=(--repo "$repo")
@@ -243,22 +270,34 @@ function glab_mr_replace {
     printf '\nMR Title:\n%s\n\nCurrent Description:\n%s\n\n' "$title" "$description"
 
     # Prompt for the text to replace if not provided as an argument
-    if [[ -z "$original" ]]; then
-        original="$(gum input --header "Text to replace (sed pattern)" --placeholder "Search text")" || return 1
+    while [[ "$interactive" == true ]]; do
         if [[ -z "$original" ]]; then
-            log error "Text to replace cannot be empty."
-            return 1
+            original="$(gum input --header "Text to replace (sed pattern)" --placeholder "Search text")" || return 1
+            if [[ -z "$original" ]]; then
+                log error "Text to replace cannot be empty."
+                return 1
+            fi
         fi
-    fi
-    if [[ "$new_set" == false ]]; then
-        new="$(gum input --header "Replacement text (leave empty to delete)" --placeholder "Replacement text")" || return 1
-    fi
+        if [[ "$new_set" == false ]]; then
+            new="$(gum input --header "Replacement text (leave empty to delete)" --placeholder "Replacement text")" || return 1
+        fi
+        sed_args+=(-e "s|${original}|${new}|g")
+        if gum confirm --default=false "Add another replacement?"; then
+            original=""
+            new=""
+            new_set=false
+        else
+            confirm_exit=$?
+            [[ "$confirm_exit" -eq 1 ]] || return 1
+            break
+        fi
+    done
 
-    if ! updated_title="$(printf '%s\n' "$title" | sed -e "s|${original}|${new}|g")"; then
+    if ! updated_title="$(printf '%s\n' "$title" | sed "${sed_args[@]}")"; then
         log error "Failed to replace text in the merge request title."
         return 1
     fi
-    if ! updated_description="$(printf '%s\n' "$description" | sed -e "s|${original}|${new}|g")"; then
+    if ! updated_description="$(printf '%s\n' "$description" | sed "${sed_args[@]}")"; then
         log error "Failed to replace text in the merge request description."
         return 1
     fi
@@ -271,8 +310,8 @@ function glab_mr_replace {
         return 1
     fi
 
-    printf 'Replacing %s with %s in the merge request title and description:\n\nBefore:\nTitle: %s\nDescription:\n%s\n\n--\nAfter:\nTitle: %s\nDescription:\n%s\n\n' \
-        "$original" "$new" "$title" "$description" "$updated_title" "$updated_description"
+    printf 'Replacing text in the merge request title and description:\n\nBefore:\nTitle: %s\nDescription:\n%s\n\n--\nAfter:\nTitle: %s\nDescription:\n%s\n\n' \
+        "$title" "$description" "$updated_title" "$updated_description"
     if [[ "$auto_approve" == "false" ]] && ! gum confirm "Update the merge request title and description?"; then
         return 1
     fi
